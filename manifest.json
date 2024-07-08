@@ -1,0 +1,4 @@
+{
+    "namespace": "yet_another_agility_mod",
+    "setup": "setup.mjs"
+}
