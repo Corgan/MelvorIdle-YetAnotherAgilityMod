@@ -1,2 +1,2 @@
-# MelvorIdle-Multitasking
-Multitasking Action for Melvor Idle
+# MelvorIdle-YetAnotherAgilityMod
+Agility Mod for Melvor Idle
