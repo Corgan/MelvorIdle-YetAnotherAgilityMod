@@ -8,6 +8,11 @@ export class YAAM {
         this.oldSkillRequirements = new Map();
         this.oldItemCosts = new Map();
         this.oldCurrencyCosts = new Map();
+        this.oldItemRewards = new Map();
+        this.oldCurrencyRewards = new Map();
+        this.oldBaseExperience = new Map();
+        this.oldBaseAbyssalExperience = new Map();
+        this.oldBaseInterval = new Map();
 
         this.obstaclesByCategoryRealm = new Map();
         this.pillarsByCategoryRealm = new Map();
@@ -28,6 +33,9 @@ export class YAAM {
 
         this.obstacleEffectScalar = 1;
         this.obstacleCombineEffects = false;
+        this.obstacleCombineRewards = false;
+        this.obstacleCombineEffectsRequiresBuiltOnce = false;
+        this.obstacleCombineEffectsRequiresBuiltOnceToGain = false;
         this.obstacleCombineEffectsRequiresMastery = false;
         this.obstacleCombineEffectsRequiresMasteryToGain = false;
         
@@ -85,6 +93,18 @@ export class YAAM {
         this.obstacleCombineEffects = value;
         this.updateObjects();
     }
+    setObstacleCombineRewards(value) {
+        this.obstacleCombineRewards = value;
+        this.updateObjects();
+    }
+    setObstacleCombineEffectsRequiresBuiltOnce(value) {
+        this.obstacleCombineEffectsRequiresBuiltOnce = value;
+        this.updateObjects();
+    }
+    setObstacleCombineEffectsRequiresBuiltOnceToGain(value) {
+        this.obstacleCombineEffectsRequiresBuiltOnceToGain = value;
+        this.updateObjects();
+    }
     setObstacleCombineEffectsRequiresMastery(value) {
         this.obstacleCombineEffectsRequiresMastery = value;
         this.updateObjects();
@@ -134,6 +154,9 @@ export class YAAM {
 
         this.obstacleEffectScalar = settings.section('Obstacles').get('obstacleEffectScalar');
         this.obstacleCombineEffects = settings.section('Obstacles').get('obstacleCombineEffects');
+        this.obstacleCombineRewards = settings.section('Obstacles').get('obstacleCombineRewards');
+        this.obstacleCombineEffectsRequiresBuiltOnce = settings.section('Obstacles').get('obstacleCombineEffectsRequiresBuiltOnce');
+        this.obstacleCombineEffectsRequiresBuiltOnceToGain = settings.section('Obstacles').get('obstacleCombineEffectsRequiresBuiltOnceToGain');
         this.obstacleCombineEffectsRequiresMastery = settings.section('Obstacles').get('obstacleCombineEffectsRequiresMastery');
         this.obstacleCombineEffectsRequiresMasteryToGain = settings.section('Obstacles').get('obstacleCombineEffectsRequiresMasteryToGain');
         
@@ -171,7 +194,8 @@ export class YAAM {
     }
 
     snapshotObject(agilityObject) {
-        this.oldModifiers.set(agilityObject, [...agilityObject.modifiers]);
+        if(agilityObject.modifiers !== undefined)
+            this.oldModifiers.set(agilityObject, [...agilityObject.modifiers]);
         if(agilityObject.enemyModifiers !== undefined)
             this.oldEnemyModifiers.set(agilityObject, [...agilityObject.enemyModifiers]);
         if(agilityObject.combatEffects !== undefined)
@@ -180,8 +204,22 @@ export class YAAM {
         if(agilityObject.skillRequirements !== undefined)
             this.oldSkillRequirements.set(agilityObject, [...agilityObject.skillRequirements]);
 
-        this.oldItemCosts.set(agilityObject, [...agilityObject.itemCosts]);
-        this.oldCurrencyCosts.set(agilityObject, [...agilityObject.currencyCosts]);
+        if(agilityObject.baseExperience !== undefined)
+            this.oldBaseExperience.set(agilityObject, agilityObject.baseExperience);
+        if(agilityObject.baseAbyssalExperience !== undefined)
+            this.oldBaseAbyssalExperience.set(agilityObject, agilityObject.baseAbyssalExperience);
+        if(agilityObject.baseInterval !== undefined)
+            this.oldBaseInterval.set(agilityObject, agilityObject.baseInterval);
+
+        if(agilityObject.itemRewards !== undefined)
+            this.oldItemRewards.set(agilityObject, [...agilityObject.itemRewards]);
+        if(agilityObject.currencyRewards !== undefined)
+            this.oldCurrencyRewards.set(agilityObject, [...agilityObject.currencyRewards]);
+
+        if(agilityObject.itemCosts !== undefined)
+            this.oldItemCosts.set(agilityObject, [...agilityObject.itemCosts]);
+        if(agilityObject.currencyCosts !== undefined)
+            this.oldCurrencyCosts.set(agilityObject, [...agilityObject.currencyCosts]);
     }
 
     updateObjects() {
@@ -229,11 +267,15 @@ export class YAAM {
                 
                 newObstacleModifiers.addModifiers(obstacle, obstacleModifiers, this.obstacleEffectScalar, this.obstacleEffectScalar);
 
-                if(this.obstacleCombineEffects && (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99)) {
+                if(this.obstacleCombineEffects &&
+                    (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99) &&
+                    (!this.obstacleCombineEffectsRequiresBuiltOnceToGain || game.agility.getObstacleBuildCount(obstacle) >= 1)) {
                     let obstaclesToMerge = this.obstaclesByCategoryRealm.get(`${obstacle.realm.id}_${obstacle.category}`);
                     if(obstaclesToMerge !== undefined) {
                         obstaclesToMerge.forEach(obstacleToMerge => {
-                            if(this.oldModifiers.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle && (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99)) {
+                            if(this.oldModifiers.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle &&
+                            (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99) &&
+                            (!this.obstacleCombineEffectsRequiresBuiltOnce || game.agility.getObstacleBuildCount(obstacleToMerge) >= 1)) {
                                 if(this.obstacleRemoveNegativeModifiers && (!this.obstacleRemoveNegativeModifiersRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99)) {
                                     newObstacleModifiers.addModifiers(obstacle, this.oldModifiers.get(obstacleToMerge).filter(modifier => !modifier.isNegative), this.obstacleEffectScalar, this.obstacleEffectScalar);
                                 } else {
@@ -256,11 +298,15 @@ export class YAAM {
                 
                 newObstacleEnemyModifiers.addModifiers(obstacle, obstacleEnemyModifiers, this.obstacleEffectScalar, this.obstacleEffectScalar);
 
-                if(this.obstacleCombineEffects && (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99)) {
+                if(this.obstacleCombineEffects &&
+                    (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99) &&
+                    (!this.obstacleCombineEffectsRequiresBuiltOnceToGain || game.agility.getObstacleBuildCount(obstacle) >= 1)) {
                     let obstaclesToMerge = this.obstaclesByCategoryRealm.get(`${obstacle.realm.id}_${obstacle.category}`);
                     if(obstaclesToMerge !== undefined) {
                         obstaclesToMerge.forEach(obstacleToMerge => {
-                            if(this.oldEnemyModifiers.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle && (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99)) {
+                            if(this.oldEnemyModifiers.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle && 
+                               (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99) &&
+                               (!this.obstacleCombineEffectsRequiresBuiltOnce || game.agility.getObstacleBuildCount(obstacleToMerge) >= 1)) {
                                 if(this.obstacleRemoveNegativeModifiers && (!this.obstacleRemoveNegativeModifiersRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99)) {
                                     newObstacleEnemyModifiers.addModifiers(obstacle, this.oldEnemyModifiers.get(obstacleToMerge).filter(modifier => modifier.isNegative), this.obstacleEffectScalar, this.obstacleEffectScalar);
                                 } else {
@@ -283,11 +329,15 @@ export class YAAM {
                 
                 newObstacleCombatEffects.push(...obstacleCombatEffects);
 
-                if(this.obstacleCombineEffects && (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99)) {
+                if(this.obstacleCombineEffects &&
+                    (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99) &&
+                    (!this.obstacleCombineEffectsRequiresBuiltOnceToGain || game.agility.getObstacleBuildCount(obstacle) >= 1)) {
                     let obstaclesToMerge = this.obstaclesByCategoryRealm.get(`${obstacle.realm.id}_${obstacle.category}`);
                     if(obstaclesToMerge !== undefined) {
                         obstaclesToMerge.forEach(obstacleToMerge => {
-                            if(this.oldCombatEffects.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle && (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99)) {
+                            if(this.oldCombatEffects.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle &&
+                            (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99) &&
+                            (!this.obstacleCombineEffectsRequiresBuiltOnce || game.agility.getObstacleBuildCount(obstacleToMerge) >= 1)) {
                                 if(this.obstacleRemoveNegativeModifiers && (!this.obstacleRemoveNegativeModifiersRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99)) {
                                     newObstacleCombatEffects.push(...this.oldCombatEffects.get(obstacleToMerge).filter(effect => !effect.isNegative));
                                 } else {
@@ -299,6 +349,122 @@ export class YAAM {
                 }
 
                 obstacle.combatEffects = newObstacleCombatEffects.map(effect => effect.clone(this.obstacleEffectScalar));
+            }
+
+            if(this.oldCurrencyRewards.get(obstacle) !== undefined) {
+                let obstacleCurrencyRewards = this.oldCurrencyRewards.get(obstacle);
+                let newObstacleCurrencyRewards = new Map();
+                
+                obstacleCurrencyRewards.forEach(currencyReward => {
+                    let existingCurrencyReward = newObstacleCurrencyRewards.get(currencyReward.currency);
+                    if(existingCurrencyReward === undefined) {
+                        existingCurrencyReward = { ...currencyReward };
+                    } else {
+                        existingCurrencyReward.quantity += currencyReward.quantity;
+                    }
+                    newObstacleCurrencyRewards.set(currencyReward.currency, existingCurrencyReward);
+                });
+
+                if(this.obstacleCombineEffects && this.obstacleCombineRewards &&
+                    (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99) &&
+                    (!this.obstacleCombineEffectsRequiresBuiltOnceToGain || game.agility.getObstacleBuildCount(obstacle) >= 1)) {
+                    let obstaclesToMerge = this.obstaclesByCategoryRealm.get(`${obstacle.realm.id}_${obstacle.category}`);
+                    if(obstaclesToMerge !== undefined) {
+                        obstaclesToMerge.forEach(obstacleToMerge => {
+                            if(this.oldCurrencyRewards.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle &&
+                            (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99) &&
+                            (!this.obstacleCombineEffectsRequiresBuiltOnce || game.agility.getObstacleBuildCount(obstacleToMerge) >= 1)) {
+                                let obstacleToMergeCurrencyRewards = this.oldCurrencyRewards.get(obstacleToMerge);
+                                obstacleToMergeCurrencyRewards.forEach(currencyReward => {
+                                    let existingCurrencyReward = newObstacleCurrencyRewards.get(currencyReward.currency);
+                                    if(existingCurrencyReward === undefined) {
+                                        existingCurrencyReward = { ...currencyReward };
+                                    } else {
+                                        existingCurrencyReward.quantity += currencyReward.quantity;
+                                    }
+                                    newObstacleCurrencyRewards.set(currencyReward.currency, existingCurrencyReward);
+                                });
+                            }
+                        })
+                    }
+                }
+
+                obstacle.currencyRewards = Array.from(newObstacleCurrencyRewards.values());
+            }
+
+            if(this.oldBaseExperience.get(obstacle) !== undefined) {
+                let obstacleBaseExperience = this.oldBaseExperience.get(obstacle);
+                let newObstacleBaseExperience = 0;
+                
+                newObstacleBaseExperience += obstacleBaseExperience;
+
+                if(this.obstacleCombineEffects && this.obstacleCombineRewards &&
+                    (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99) &&
+                    (!this.obstacleCombineEffectsRequiresBuiltOnceToGain || game.agility.getObstacleBuildCount(obstacle) >= 1)) {
+                    let obstaclesToMerge = this.obstaclesByCategoryRealm.get(`${obstacle.realm.id}_${obstacle.category}`);
+                    if(obstaclesToMerge !== undefined) {
+                        obstaclesToMerge.forEach(obstacleToMerge => {
+                            if(this.oldBaseExperience.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle &&
+                            (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99) &&
+                            (!this.obstacleCombineEffectsRequiresBuiltOnce || game.agility.getObstacleBuildCount(obstacleToMerge) >= 1)) {
+                                let obstacleToMergeBaseExperience = this.oldBaseExperience.get(obstacleToMerge);
+                                newObstacleBaseExperience += obstacleToMergeBaseExperience;
+                            }
+                        })
+                    }
+                }
+
+                obstacle.baseExperience = newObstacleBaseExperience;
+            }
+
+            if(this.oldBaseAbyssalExperience.get(obstacle) !== undefined) {
+                let obstacleBaseAbyssalExperience = this.oldBaseAbyssalExperience.get(obstacle);
+                let newObstacleBaseAbyssalExperience = 0;
+                
+                newObstacleBaseAbyssalExperience += obstacleBaseAbyssalExperience;
+
+                if(this.obstacleCombineEffects && this.obstacleCombineRewards &&
+                    (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99) &&
+                    (!this.obstacleCombineEffectsRequiresBuiltOnceToGain || game.agility.getObstacleBuildCount(obstacle) >= 1)) {
+                    let obstaclesToMerge = this.obstaclesByCategoryRealm.get(`${obstacle.realm.id}_${obstacle.category}`);
+                    if(obstaclesToMerge !== undefined) {
+                        obstaclesToMerge.forEach(obstacleToMerge => {
+                            if(this.oldBaseAbyssalExperience.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle &&
+                            (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99) &&
+                            (!this.obstacleCombineEffectsRequiresBuiltOnce || game.agility.getObstacleBuildCount(obstacleToMerge) >= 1)) {
+                                let obstacleToMergeBaseAbyssalExperience = this.oldBaseAbyssalExperience.get(obstacleToMerge);
+                                newObstacleBaseAbyssalExperience += obstacleToMergeBaseAbyssalExperience;
+                            }
+                        })
+                    }
+                }
+
+                obstacle.baseAbyssalExperience = newObstacleBaseAbyssalExperience;
+            }
+
+            if(this.oldBaseInterval.get(obstacle) !== undefined) {
+                let obstacleBaseInterval = this.oldBaseInterval.get(obstacle);
+                let newObstacleBaseInterval = 0;
+                
+                newObstacleBaseInterval += obstacleBaseInterval;
+
+                if(this.obstacleCombineEffects && this.obstacleCombineRewards && 
+                    (!this.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(obstacle) >= 99) &&
+                    (!this.obstacleCombineEffectsRequiresBuiltOnceToGain || game.agility.getObstacleBuildCount(obstacle) >= 1)) {
+                    let obstaclesToMerge = this.obstaclesByCategoryRealm.get(`${obstacle.realm.id}_${obstacle.category}`);
+                    if(obstaclesToMerge !== undefined) {
+                        obstaclesToMerge.forEach(obstacleToMerge => {
+                            if(this.oldBaseInterval.get(obstacleToMerge) !== undefined && obstacleToMerge !== obstacle &&
+                            (!this.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99) &&
+                            (!this.obstacleCombineEffectsRequiresBuiltOnce || game.agility.getObstacleBuildCount(obstacleToMerge) >= 1)) {
+                                let obstacleToMergeBaseInterval = this.oldBaseInterval.get(obstacleToMerge);
+                                newObstacleBaseInterval += obstacleToMergeBaseInterval;
+                            }
+                        })
+                    }
+                }
+
+                obstacle.baseInterval = newObstacleBaseInterval;
             }
         });
 

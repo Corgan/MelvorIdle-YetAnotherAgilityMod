@@ -21,7 +21,10 @@ export async function setup({ gameData, loadModule, loadScript, onModsLoaded, on
                 { display: 'x3', value: 3 },
                 { display: 'x4', value: 4 },
                 { display: 'x5', value: 5 },
-                { display: 'x10', value: 10 }
+                { display: 'x10', value: 10 },
+                { display: 'x25', value: 25 },
+                { display: 'x50', value: 50 },
+                { display: 'x100', value: 100 }
             ],
             onChange: function(value, previousValue) {
                 return game.yaam.setObstacleItemCostScalar(value);
@@ -64,7 +67,10 @@ export async function setup({ gameData, loadModule, loadScript, onModsLoaded, on
                 { display: 'x3', value: 3 },
                 { display: 'x4', value: 4 },
                 { display: 'x5', value: 5 },
-                { display: 'x10', value: 10 }
+                { display: 'x10', value: 10 },
+                { display: 'x25', value: 25 },
+                { display: 'x50', value: 50 },
+                { display: 'x100', value: 100 }
             ],
             onChange: function(value, previousValue) {
                 return game.yaam.setObstacleCurrencyCostScalar(value);
@@ -147,8 +153,37 @@ export async function setup({ gameData, loadModule, loadScript, onModsLoaded, on
             label: 'Combine Obstacle Effects',
             default: false,
             onChange: function(value, previousValue) {
-                console.log(value);
                 return game.yaam.setObstacleCombineEffects(value);
+            }
+        },
+        {
+            name: 'obstacleCombineRewards',
+            type: 'switch',
+            label: 'Combine Obstacle Rewards',
+            hint: 'Requires "Combine Obstacle Effects" setting to be enabled. Follows the same restrictions from below options.',
+            default: false,
+            onChange: function(value, previousValue) {
+                return game.yaam.setObstacleCombineRewards(value);
+            }
+        },
+        {
+            name: 'obstacleCombineEffectsRequiresBuiltOnce',
+            type: 'switch',
+            label: 'Require obstacle to be built at least once to provide effects to other obstacles',
+            hint: 'Requires "Combine Obstacle Effects" setting to be enabled.',
+            default: false,
+            onChange: function(value, previousValue) {
+                return game.yaam.setObstacleCombineEffectsRequiresBuiltOnce(value);
+            }
+        },
+        {
+            name: 'obstacleCombineEffectsRequiresBuiltOnceToGain',
+            type: 'switch',
+            label: 'Require obstacle to be built at least once to gain effects from other obstacles',
+            hint: 'Requires "Combine Obstacle Effects" setting to be enabled.',
+            default: false,
+            onChange: function(value, previousValue) {
+                return game.yaam.setObstacleCombineEffectsRequiresBuiltOnceToGain(value);
             }
         },
         {
@@ -192,7 +227,10 @@ export async function setup({ gameData, loadModule, loadScript, onModsLoaded, on
                 { display: 'x3', value: 3 },
                 { display: 'x4', value: 4 },
                 { display: 'x5', value: 5 },
-                { display: 'x10', value: 10 }
+                { display: 'x10', value: 10 },
+                { display: 'x25', value: 25 },
+                { display: 'x50', value: 50 },
+                { display: 'x100', value: 100 }
             ],
             onChange: function(value, previousValue) {
                 return game.yaam.setPillarItemCostScalar(value);
@@ -285,6 +323,26 @@ export async function setup({ gameData, loadModule, loadScript, onModsLoaded, on
             game.yaam.obstacleCombineEffectsRequiresMastery ||
             game.yaam.obstacleCombineEffectsRequiresMasteryToGain) && newLevel >= 99)
             game.yaam.updateObjects();
+    });
+
+    patch(Agility, 'addMasteryForAction').replace(function(o, action, interval) {
+        if(game.yaam.obstacleCombineRewards && game.yaam.oldBaseInterval.get(action) !== undefined &&
+            (!game.yaam.obstacleCombineEffectsRequiresMasteryToGain || game.agility.getMasteryLevel(action) >= 99) &&
+            (!game.yaam.obstacleCombineEffectsRequiresBuiltOnceToGain || game.agility.getObstacleBuildCount(action) >= 1)) {
+                o(action, game.yaam.oldBaseInterval.get(action));
+            let obstaclesToMerge = game.yaam.obstaclesByCategoryRealm.get(`${action.realm.id}_${action.category}`);
+            if(obstaclesToMerge !== undefined) {
+                obstaclesToMerge.forEach(obstacleToMerge => {
+                    if(game.yaam.oldBaseInterval.get(obstacleToMerge) !== undefined && obstacleToMerge !== action &&
+                    (!game.yaam.obstacleCombineEffectsRequiresMastery || game.agility.getMasteryLevel(obstacleToMerge) >= 99) &&
+                    (!game.yaam.obstacleCombineEffectsRequiresBuiltOnce || game.agility.getObstacleBuildCount(obstacleToMerge) >= 1)) {
+                        o(obstacleToMerge, game.yaam.oldBaseInterval.get(obstacleToMerge));
+                    }
+                });
+            }
+        } else {
+            return o(action, interval);
+        }
     });
 
     onModsLoaded(() => {
